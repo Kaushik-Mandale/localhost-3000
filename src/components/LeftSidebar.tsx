@@ -22,6 +22,8 @@ interface Props {
   onOpenDataset: (name: string) => void;
   onNewNotebook: () => void;
   onCreateFolder: (name: string) => void;
+  onDeleteNotebook: (id: string) => void;
+  onDeleteDataset?: (name: string) => void;
   onRefresh: () => void;
   kernelState: KernelState;
   activeNotebookCells?: { id: string; source: string; type: string }[];
@@ -39,6 +41,8 @@ export const LeftSidebar: React.FC<Props> = ({
   onOpenDataset,
   onNewNotebook,
   onCreateFolder,
+  onDeleteNotebook,
+  onDeleteDataset,
   onRefresh,
   kernelState,
   activeNotebookCells = [],
@@ -136,6 +140,8 @@ export const LeftSidebar: React.FC<Props> = ({
               onOpenDataset={onOpenDataset}
               onNewNotebook={onNewNotebook}
               onCreateFolder={onCreateFolder}
+              onDeleteNotebook={onDeleteNotebook}
+              onDeleteDataset={onDeleteDataset}
               onRefresh={onRefresh}
             />
           )}

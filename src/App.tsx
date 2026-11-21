@@ -23,10 +23,10 @@ export const App: React.FC = () => {
   const [programs, setPrograms] = useState<PracticalProgram[]>(() =>
     ProgramStorageService.getPrograms()
   );
-  const [datasets] = useState(ProgramStorageService.getAllDatasets());
+  const [datasets, setDatasets] = useState(ProgramStorageService.getAllDatasets());
 
-  // Initial tab: clean blank Untitled.ipynb
-  const initialProgram = programs[0] || {
+  // Default initial notebook
+  const defaultInitial = programs[0] || {
     id: 'nb-untitled-1',
     practicalNumber: 1,
     title: 'Untitled',
@@ -39,14 +39,14 @@ export const App: React.FC = () => {
 
   const [tabs, setTabs] = useState<WorkspaceTab[]>([
     {
-      id: `tab-${initialProgram.id}`,
-      programId: initialProgram.id,
-      title: initialProgram.filename,
-      filename: initialProgram.filename,
+      id: `tab-${defaultInitial.id}`,
+      programId: defaultInitial.id,
+      title: defaultInitial.filename,
+      filename: defaultInitial.filename,
       type: 'notebook',
     },
   ]);
-  const [activeTabId, setActiveTabId] = useState<string>(`tab-${initialProgram.id}`);
+  const [activeTabId, setActiveTabId] = useState<string>(`tab-${defaultInitial.id}`);
 
   // Sidebar
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files');
@@ -92,11 +92,34 @@ export const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Active Tab
+  // Active Tab & Program Resolution
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
-  const activeProgram = activeTab?.programId
+
+  let activeProgram = activeTab?.programId
     ? programs.find((p) => p.id === activeTab.programId)
     : programs[0];
+
+  // Guarantee activeProgram is never undefined if a notebook tab is open
+  if (!activeProgram && activeTab?.type === 'notebook') {
+    activeProgram = {
+      id: activeTab?.programId || `nb-${Date.now()}`,
+      practicalNumber: 1,
+      title: (activeTab?.title || 'Untitled').replace('.ipynb', ''),
+      filename: activeTab?.filename || 'Untitled.ipynb',
+      description: '',
+      cells: [
+        {
+          id: `cell-${Date.now()}`,
+          type: 'code',
+          source: '',
+          executionCount: null,
+          outputs: [],
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
 
   // Open Notebook in tab
   const handleOpenNotebook = useCallback((program: PracticalProgram) => {
@@ -188,10 +211,10 @@ export const App: React.FC = () => {
     }
   }, [programs]);
 
-  // Create new blank notebook (Matching Image 2: creates Untitled.ipynb with 1 single blank code cell)
+  // Create new blank notebook
   const handleNewNotebook = useCallback(async () => {
-    const existingUntitledCount = programs.filter((p) => p.filename.startsWith('Untitled')).length;
-    const filename = existingUntitledCount === 0 ? 'Untitled.ipynb' : `Untitled${existingUntitledCount}.ipynb`;
+    const existingCount = programs.filter((p) => p.filename.startsWith('Untitled')).length;
+    const filename = existingCount === 0 ? 'Untitled.ipynb' : `Untitled_${existingCount}.ipynb`;
 
     const newProg = await ProgramStorageService.addProgram({
       practicalNumber: programs.length + 1,
@@ -212,6 +235,53 @@ export const App: React.FC = () => {
     setPrograms(ProgramStorageService.getPrograms());
     handleOpenNotebook(newProg);
   }, [handleOpenNotebook, programs]);
+
+  // Delete notebook from FileBrowser or Admin
+  const handleDeleteNotebook = useCallback(
+    async (id: string) => {
+      await ProgramStorageService.deleteProgram(id);
+      const remaining = ProgramStorageService.getPrograms();
+      setPrograms(remaining);
+
+      // Close tab if open
+      setTabs((prev) => {
+        const afterClose = prev.filter((t) => t.programId !== id);
+        if (afterClose.length === 0) {
+          const fallback = remaining[0] || {
+            id: 'nb-untitled-1',
+            practicalNumber: 1,
+            title: 'Untitled',
+            filename: 'Untitled.ipynb',
+            description: '',
+            cells: [{ id: 'c-1', type: 'code', source: '', executionCount: null, outputs: [] }],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          return [
+            {
+              id: `tab-${fallback.id}`,
+              programId: fallback.id,
+              title: fallback.filename,
+              filename: fallback.filename,
+              type: 'notebook',
+            },
+          ];
+        }
+        return afterClose;
+      });
+
+      if (remaining.length > 0) {
+        setActiveTabId(`tab-${remaining[0].id}`);
+      }
+    },
+    []
+  );
+
+  // Delete dataset
+  const handleDeleteDataset = useCallback((name: string) => {
+    setDatasets((prev) => prev.filter((d) => d.name !== name));
+    setTabs((prev) => prev.filter((t) => !(t.filename === name && t.type === 'dataset')));
+  }, []);
 
   // Create Folder
   const handleCreateFolder = useCallback(async (name: string) => {
@@ -242,34 +312,6 @@ export const App: React.FC = () => {
     await ProgramStorageService.updateProgram(prog);
     setPrograms(ProgramStorageService.getPrograms());
   }, []);
-
-  const handleDeleteProgram = useCallback(
-    async (id: string) => {
-      await ProgramStorageService.deleteProgram(id);
-      const all = ProgramStorageService.getPrograms();
-      setPrograms(all);
-      setTabs((prev) => {
-        const remaining = prev.filter((t) => t.programId !== id);
-        if (remaining.length === 0 && all.length > 0) {
-          const first = all[0];
-          return [
-            {
-              id: `tab-${first.id}`,
-              programId: first.id,
-              title: first.filename,
-              filename: first.filename,
-              type: 'notebook',
-            },
-          ];
-        }
-        return remaining;
-      });
-      if (all.length > 0) {
-        setActiveTabId(`tab-${all[0].id}`);
-      }
-    },
-    []
-  );
 
   // Admin Auth Success
   const handleLoginSuccess = () => {
@@ -318,7 +360,7 @@ export const App: React.FC = () => {
           }
         }}
         onShowShortcuts={() => setIsShortcutsOpen(true)}
-        activeFilename={activeTab?.filename || 'Notebook'}
+        activeFilename={activeTab?.filename || 'Untitled.ipynb'}
       />
 
       {/* Main Workspace Body */}
@@ -341,6 +383,8 @@ export const App: React.FC = () => {
           onOpenDataset={handleOpenDataset}
           onNewNotebook={handleNewNotebook}
           onCreateFolder={handleCreateFolder}
+          onDeleteNotebook={handleDeleteNotebook}
+          onDeleteDataset={handleDeleteDataset}
           onRefresh={() => setPrograms(ProgramStorageService.getPrograms())}
           kernelState={kernelState}
           activeNotebookCells={activeProgram?.cells}
@@ -365,7 +409,7 @@ export const App: React.FC = () => {
                 programs={programs}
                 onAddProgram={handleAddProgram}
                 onUpdateProgram={handleUpdateProgram}
-                onDeleteProgram={handleDeleteProgram}
+                onDeleteProgram={handleDeleteNotebook}
                 onOpenNotebook={handleOpenNotebook}
                 onLogout={handleAdminLogout}
               />
@@ -386,11 +430,7 @@ export const App: React.FC = () => {
                 }}
                 kernelState={kernelState}
               />
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm">
-                No active notebook. Click + to create one.
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
