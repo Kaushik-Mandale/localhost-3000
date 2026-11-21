@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-border-subtle: #e5e7eb;
+  --app-border-default: #d1d5db;
+  --app-border-active: #2563eb;
+  --app-bg-main: #ffffff;
+  --app-bg-subtle: #f9fafb;
+  --app-bg-secondary: #f3f4f6;
+  --app-text-main: #111827;
+  --app-text-muted: #6b7280;
+  --app-accent: #2563eb;
+  --app-cell-code-bg: #f8fafc;
+  --app-cell-active-indicator: #2563eb;
+  --app-prompt-in: #1d4ed8;
+  --app-prompt-out: #b91c1c;
+}
+
+.dark {
+  --app-border-subtle: #2d3748;
+  --app-border-default: #3f4756;
+  --app-border-active: #3b82f6;
+  --app-bg-main: #1e1e24;
+  --app-bg-subtle: #18181c;
+  --app-bg-secondary: #26262d;
+  --app-text-main: #f3f4f6;
+  --app-text-muted: #9ca3af;
+  --app-accent: #3b82f6;
+  --app-cell-code-bg: #1c1c22;
+  --app-cell-active-indicator: #3b82f6;
+  --app-prompt-in: #818cf8;
+  --app-prompt-out: #f87171;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.cm-editor {
+  font-family: 'JetBrains Mono', Consolas, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+.cm-editor.cm-focused {
+  outline: none !important;
+}
+
+.dataframe-table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+.dataframe-table th,
+.dataframe-table td {
+  border: 1px solid var(--app-border-default);
+  padding: 4px 10px;
+  text-align: right;
+}
+.dataframe-table th {
+  background-color: var(--app-bg-secondary);
+  font-weight: 600;
+  color: var(--app-text-main);
+}
+.dataframe-table tr:nth-child(even) {
+  background-color: var(--app-bg-subtle);
+}
