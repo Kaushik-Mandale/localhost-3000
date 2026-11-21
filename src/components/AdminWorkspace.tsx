@@ -57,7 +57,7 @@ export const AdminWorkspace: React.FC<Props> = ({
     setFormFilename(`Practical_${nextNum}.ipynb`);
     setFormDescription('');
     setFormDataset('Iris.csv');
-    setFormCode(`# Practical No. ${nextNum}\nimport pandas as pd\nimport numpy as np\n\n# Load dataset\ndf = pd.read_csv('Iris.csv')\nprint(df.head())`);
+    setFormCode('');
     setIsAddModalOpen(true);
   };
 

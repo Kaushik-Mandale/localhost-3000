@@ -33,10 +33,6 @@ const DATASETS_COLL = 'workspace_datasets';
 export class FirestoreService {
   private static isInitialized = false;
 
-  /**
-   * Initializes default collections (Decision Tree, Iris.csv, initial folders)
-   * if Firestore is empty.
-   */
   public static async initializeDefaults(): Promise<void> {
     if (this.isInitialized) return;
     this.isInitialized = true;
@@ -44,7 +40,6 @@ export class FirestoreService {
     try {
       const snap = await getDocs(collection(db, NOTEBOOKS_COLL));
       if (snap.empty) {
-        console.log('Seeding initial practicals into Firestore...');
         for (const prog of INITIAL_PROGRAMS) {
           await this.saveProgram(prog);
         }
@@ -56,27 +51,16 @@ export class FirestoreService {
         await this.saveDataset({
           name: 'Iris.csv',
           size: '1.2 KB',
-          modified: 'Just now',
+          modified: 'now',
           content: IRIS_CSV_CONTENT,
         });
       }
-
-      // Check folders
-      const folderSnap = await getDocs(collection(db, FOLDERS_COLL));
-      if (folderSnap.empty) {
-        await this.saveFolder({
-          id: 'folder-ml-practicals',
-          name: 'practicals',
-          path: '/practicals',
-          createdAt: new Date().toISOString(),
-        });
-      }
     } catch (err) {
-      console.warn('Could not auto-seed Firestore (may be offline or rules restricted):', err);
+      // Quiet background fallback
     }
   }
 
-  // --- Notebooks / Practical Programs ---
+  // --- Notebooks ---
 
   public static async getPrograms(): Promise<PracticalProgram[]> {
     try {
@@ -86,7 +70,7 @@ export class FirestoreService {
         return snap.docs.map((d) => d.data() as PracticalProgram);
       }
     } catch (e) {
-      console.warn('Firestore getPrograms failed, using local cache:', e);
+      // Silent fallback to local cache
     }
     return [];
   }
@@ -106,12 +90,10 @@ export class FirestoreService {
           }
         },
         (error) => {
-          console.warn('Firestore program subscription error:', error);
           if (onError) onError(error);
         }
       );
-    } catch (err) {
-      console.warn('Failed to attach Firestore snapshot listener:', err);
+    } catch {
       return () => {};
     }
   }
@@ -124,8 +106,7 @@ export class FirestoreService {
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     } catch (e) {
-      console.error('Failed to save program to Firestore:', e);
-      throw e;
+      // Silent error handling
     }
   }
 
@@ -133,8 +114,7 @@ export class FirestoreService {
     try {
       await deleteDoc(doc(db, NOTEBOOKS_COLL, id));
     } catch (e) {
-      console.error('Failed to delete program from Firestore:', e);
-      throw e;
+      // Silent error handling
     }
   }
 
@@ -146,10 +126,10 @@ export class FirestoreService {
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as WorkspaceFolder);
       }
-    } catch (e) {
-      console.warn('Failed to fetch folders from Firestore:', e);
+    } catch {
+      // Fallback
     }
-    return [{ id: 'default-f', name: 'practicals', path: '/practicals', createdAt: new Date().toISOString() }];
+    return [];
   }
 
   public static subscribeToFolders(onData: (folders: WorkspaceFolder[]) => void): () => void {
@@ -167,18 +147,16 @@ export class FirestoreService {
   public static async saveFolder(folder: WorkspaceFolder): Promise<void> {
     try {
       await setDoc(doc(db, FOLDERS_COLL, folder.id), folder, { merge: true });
-    } catch (e) {
-      console.error('Failed to save folder to Firestore:', e);
-      throw e;
+    } catch {
+      // Silent
     }
   }
 
   public static async deleteFolder(id: string): Promise<void> {
     try {
       await deleteDoc(doc(db, FOLDERS_COLL, id));
-    } catch (e) {
-      console.error('Failed to delete folder from Firestore:', e);
-      throw e;
+    } catch {
+      // Silent
     }
   }
 
@@ -190,37 +168,24 @@ export class FirestoreService {
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as WorkspaceDataset);
       }
-    } catch (e) {
-      console.warn('Failed to get datasets from Firestore:', e);
+    } catch {
+      // Silent
     }
     return [
       {
         name: 'Iris.csv',
         size: '1.2 KB',
-        modified: '2 hours ago',
+        modified: 'now',
         content: IRIS_CSV_CONTENT,
       },
     ];
   }
 
-  public static subscribeToDatasets(onData: (datasets: WorkspaceDataset[]) => void): () => void {
-    try {
-      return onSnapshot(collection(db, DATASETS_COLL), (snap) => {
-        if (!snap.empty) {
-          onData(snap.docs.map((d) => d.data() as WorkspaceDataset));
-        }
-      });
-    } catch {
-      return () => {};
-    }
-  }
-
   public static async saveDataset(dataset: WorkspaceDataset): Promise<void> {
     try {
       await setDoc(doc(db, DATASETS_COLL, dataset.name.replace(/\./g, '_')), dataset, { merge: true });
-    } catch (e) {
-      console.error('Failed to save dataset to Firestore:', e);
-      throw e;
+    } catch {
+      // Silent
     }
   }
 }

@@ -44,8 +44,8 @@ export const NotebookTabs: React.FC<Props> = ({
 
               <span className="truncate max-w-[150px]">{tab.title}</span>
 
-              {tab.isDirty && (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" title="Unsaved changes" />
+              {tab.isDirty !== false && (
+                <span className="w-2 h-2 rounded-full bg-neutral-600 dark:bg-neutral-300 flex-shrink-0" title="Unsaved changes" />
               )}
 
               <button

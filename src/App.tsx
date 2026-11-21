@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PracticalProgram, WorkspaceTab, KernelState } from './types/notebook';
 import { ProgramStorageService } from './services/programStorage';
-import { WorkspaceFolder } from './services/firestoreService';
 import { PythonKernelService } from './services/pythonKernel';
 import { JupyterHeader } from './components/JupyterHeader';
 import { LeftSidebar, SidebarTab } from './components/LeftSidebar';
@@ -20,34 +19,41 @@ export const App: React.FC = () => {
     return saved === 'dark';
   });
 
-  // Programs, Folders & Datasets (Firestore synced)
+  // Programs & Datasets
   const [programs, setPrograms] = useState<PracticalProgram[]>(() =>
     ProgramStorageService.getPrograms()
   );
-  const [folders, setFolders] = useState<WorkspaceFolder[]>(() =>
-    ProgramStorageService.getFolders()
-  );
   const [datasets] = useState(ProgramStorageService.getAllDatasets());
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
 
-  // Tabs
+  // Initial tab: clean blank Untitled.ipynb
+  const initialProgram = programs[0] || {
+    id: 'nb-untitled-1',
+    practicalNumber: 1,
+    title: 'Untitled',
+    filename: 'Untitled.ipynb',
+    description: '',
+    cells: [{ id: 'c-1', type: 'code', source: '', executionCount: null, outputs: [] }],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
   const [tabs, setTabs] = useState<WorkspaceTab[]>([
     {
-      id: 'tab-prac-7',
-      programId: 'prac-7',
-      title: 'Decision_Tree.ipynb',
-      filename: 'Decision_Tree.ipynb',
+      id: `tab-${initialProgram.id}`,
+      programId: initialProgram.id,
+      title: initialProgram.filename,
+      filename: initialProgram.filename,
       type: 'notebook',
     },
   ]);
-  const [activeTabId, setActiveTabId] = useState<string>('tab-prac-7');
+  const [activeTabId, setActiveTabId] = useState<string>(`tab-${initialProgram.id}`);
 
   // Sidebar
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files');
 
   // Kernel state
   const [kernelState, setKernelState] = useState<KernelState>('idle');
-  const [kernelMessage, setKernelMessage] = useState<string>('Initializing...');
+  const [kernelMessage, setKernelMessage] = useState<string>('Idle');
 
   // Modals & Admin
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -69,21 +75,11 @@ export const App: React.FC = () => {
     }
   }, [isDark]);
 
-  // Initialize Firestore Cloud Sync
+  // Cloud Sync in background (quietly)
   useEffect(() => {
-    // Sync status listener
-    const unsubStatus = ProgramStorageService.onSyncStatusChange((s) => {
-      setSyncStatus(s);
-    });
-
-    // Cloud updates listener
     ProgramStorageService.initCloudSync((remotePrograms) => {
       setPrograms(remotePrograms);
     });
-
-    return () => {
-      unsubStatus();
-    };
   }, []);
 
   // Hook into Python kernel service status
@@ -164,7 +160,7 @@ export const App: React.FC = () => {
   const handleCloseTab = useCallback(
     (tabId: string) => {
       setTabs((prev) => {
-        if (prev.length <= 1) return prev; // Keep at least one tab
+        if (prev.length <= 1) return prev;
         const remaining = prev.filter((t) => t.id !== tabId);
         if (activeTabId === tabId) {
           setActiveTabId(remaining[remaining.length - 1].id);
@@ -192,46 +188,40 @@ export const App: React.FC = () => {
     }
   }, [programs]);
 
-  // Create new blank notebook
+  // Create new blank notebook (Matching Image 2: creates Untitled.ipynb with 1 single blank code cell)
   const handleNewNotebook = useCallback(async () => {
-    const nextPracNum = programs.length > 0 ? Math.max(...programs.map((p) => p.practicalNumber)) + 1 : 1;
+    const existingUntitledCount = programs.filter((p) => p.filename.startsWith('Untitled')).length;
+    const filename = existingUntitledCount === 0 ? 'Untitled.ipynb' : `Untitled${existingUntitledCount}.ipynb`;
+
     const newProg = await ProgramStorageService.addProgram({
-      practicalNumber: nextPracNum,
-      title: `Untitled Practical ${nextPracNum}`,
-      filename: `Untitled_${nextPracNum}.ipynb`,
-      description: 'New machine learning practical notebook.',
+      practicalNumber: programs.length + 1,
+      title: filename.replace('.ipynb', ''),
+      filename: filename,
+      description: '',
       cells: [
         {
-          id: `c-${Date.now()}-1`,
-          type: 'markdown',
-          source: `# Practical No. ${nextPracNum}: Untitled\nObjective: Write your code below.`,
-          executionCount: null,
-          outputs: [],
-        },
-        {
-          id: `c-${Date.now()}-2`,
+          id: `cell-${Date.now()}`,
           type: 'code',
-          source: `# Python code cell\nimport numpy as np\nprint("Hello from Practical ${nextPracNum}")`,
+          source: '',
           executionCount: null,
           outputs: [],
         },
       ],
     });
+
     setPrograms(ProgramStorageService.getPrograms());
     handleOpenNotebook(newProg);
   }, [handleOpenNotebook, programs]);
 
   // Create Folder
   const handleCreateFolder = useCallback(async (name: string) => {
-    const created = await ProgramStorageService.addFolder(name);
-    setFolders(ProgramStorageService.getFolders());
+    await ProgramStorageService.addFolder(name);
   }, []);
 
   // Save active notebook
   const handleSaveProgram = useCallback(async (updated: PracticalProgram) => {
     await ProgramStorageService.updateProgram(updated);
     setPrograms(ProgramStorageService.getPrograms());
-    // Clear dirty indicator
     setTabs((prev) =>
       prev.map((t) => (t.programId === updated.id ? { ...t, isDirty: false } : t))
     );
@@ -258,7 +248,6 @@ export const App: React.FC = () => {
       await ProgramStorageService.deleteProgram(id);
       const all = ProgramStorageService.getPrograms();
       setPrograms(all);
-      // Remove any open tab for this deleted program
       setTabs((prev) => {
         const remaining = prev.filter((t) => t.programId !== id);
         if (remaining.length === 0 && all.length > 0) {
@@ -291,14 +280,12 @@ export const App: React.FC = () => {
 
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
-    // Close admin tab and switch back to student workspace notebook
     setTabs((prev) => prev.filter((t) => t.type !== 'admin'));
     if (programs.length > 0) {
       handleOpenNotebook(programs[0]);
     }
   };
 
-  // Scroll to cell helper
   const handleScrollToCell = (cellId: string) => {
     const el = document.getElementById(`cell-${cellId}`);
     if (el) {
@@ -349,9 +336,7 @@ export const App: React.FC = () => {
           }}
           programs={programs}
           datasets={datasets}
-          folders={folders}
           activeFilename={activeTab?.filename || ''}
-          syncStatus={syncStatus}
           onOpenNotebook={handleOpenNotebook}
           onOpenDataset={handleOpenDataset}
           onNewNotebook={handleNewNotebook}
@@ -362,7 +347,7 @@ export const App: React.FC = () => {
           onScrollToCell={handleScrollToCell}
         />
 
-        {/* Center Notebook / Tab Workspace */}
+        {/* Center Notebook Workspace */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white dark:bg-neutral-900">
           {/* Notebook Tab Bar */}
           <NotebookTabs
@@ -403,7 +388,7 @@ export const App: React.FC = () => {
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm">
-                No active notebook selected.
+                No active notebook. Click + to create one.
               </div>
             )}
           </div>
@@ -412,13 +397,12 @@ export const App: React.FC = () => {
 
       {/* Bottom Status Bar */}
       <StatusBar
-        activeFilename={activeTab?.filename || 'Notebook'}
+        activeFilename={activeTab?.filename || 'Untitled.ipynb'}
         kernelState={kernelState}
         kernelMessage={kernelMessage}
         isEditMode={true}
         activeCellIndex={activeCellIdx}
         totalCells={totalCells}
-        syncStatus={syncStatus}
       />
 
       {/* Modals */}

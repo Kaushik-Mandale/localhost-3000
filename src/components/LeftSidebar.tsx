@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { FileBrowser } from './FileBrowser';
 import { PracticalProgram, KernelState } from '../types/notebook';
-import { WorkspaceFolder } from '../services/firestoreService';
 
 export type SidebarTab = 'files' | 'running' | 'toc' | 'extensions' | null;
 
@@ -18,9 +17,7 @@ interface Props {
   onOpenSettingsLogin: () => void;
   programs: PracticalProgram[];
   datasets: { name: string; size: string; modified: string }[];
-  folders: WorkspaceFolder[];
   activeFilename: string;
-  syncStatus: 'synced' | 'syncing' | 'offline';
   onOpenNotebook: (program: PracticalProgram) => void;
   onOpenDataset: (name: string) => void;
   onNewNotebook: () => void;
@@ -37,9 +34,7 @@ export const LeftSidebar: React.FC<Props> = ({
   onOpenSettingsLogin,
   programs,
   datasets,
-  folders,
   activeFilename,
-  syncStatus,
   onOpenNotebook,
   onOpenDataset,
   onNewNotebook,
@@ -136,9 +131,7 @@ export const LeftSidebar: React.FC<Props> = ({
             <FileBrowser
               programs={programs}
               datasets={datasets}
-              folders={folders}
               activeFilename={activeFilename}
-              syncStatus={syncStatus}
               onOpenNotebook={onOpenNotebook}
               onOpenDataset={onOpenDataset}
               onNewNotebook={onNewNotebook}
@@ -168,15 +161,15 @@ export const LeftSidebar: React.FC<Props> = ({
                   </span>
                 </div>
                 <div className="text-[11px] text-neutral-500 font-mono">
-                  Runtime: WebAssembly Pyodide / In-Browser
+                  Runtime: WebAssembly Pyodide
                 </div>
                 <div className="text-[11px] text-neutral-500 font-mono">
-                  Active Notebook: {activeFilename}
+                  Active: {activeFilename}
                 </div>
               </div>
 
               <div className="text-neutral-500 text-[11px] leading-relaxed">
-                All open notebooks share the managed Python execution kernel. Memory variables persist across notebook cells during this session.
+                All open notebooks share the active Python 3 kernel. Variables persist across notebook cells during this session.
               </div>
             </div>
           )}
@@ -221,12 +214,6 @@ export const LeftSidebar: React.FC<Props> = ({
                     Pyodide Wasm Engine
                   </div>
                   <div className="text-[11px] text-neutral-500">v0.26.4 (Active)</div>
-                </div>
-                <div className="p-2 border rounded border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
-                  <div className="font-medium text-neutral-800 dark:text-neutral-200">
-                    Firebase Cloud Firestore
-                  </div>
-                  <div className="text-[11px] text-neutral-500">Realtime Remote Storage</div>
                 </div>
                 <div className="p-2 border rounded border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
                   <div className="font-medium text-neutral-800 dark:text-neutral-200">

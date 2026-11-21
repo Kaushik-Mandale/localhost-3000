@@ -4,7 +4,7 @@ import { python } from '@codemirror/lang-python';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { NotebookCell } from '../types/notebook';
 import { CellOutput } from './CellOutput';
-import { Play, Trash2, ArrowUp, ArrowDown, Plus, Copy } from 'lucide-react';
+import { Trash2, ArrowUp, ArrowDown, Plus, Copy } from 'lucide-react';
 
 interface Props {
   cell: NotebookCell;
@@ -65,135 +65,138 @@ export const CodeCell: React.FC<Props> = ({
     <div
       ref={containerRef}
       onClick={onSelect}
-      className={`relative my-1.5 transition-all group border-l-4 ${
-        isActive
-          ? 'border-l-blue-600 bg-white dark:bg-neutral-900 shadow-sm'
-          : 'border-l-transparent hover:border-l-neutral-300 dark:hover:border-l-neutral-700'
+      className={`relative my-2 transition-all group flex flex-col ${
+        isActive ? 'active-cell' : ''
       }`}
     >
-      {/* Quick Action Floating Controls on Hover */}
-      <div className="absolute right-3 -top-3 hidden group-hover:flex items-center space-x-0.5 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded shadow-md z-10 px-1 py-0.5 text-neutral-600 dark:text-neutral-300">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onExecute();
-          }}
-          className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded hover:text-blue-600"
-          title="Run Cell (Ctrl+Enter)"
-        >
-          <Play size={12} fill="currentColor" />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onInsertBelow();
-          }}
-          className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded hover:text-green-600"
-          title="Insert Cell Below"
-        >
-          <Plus size={12} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDuplicate();
-          }}
-          className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded hover:text-blue-500"
-          title="Duplicate Cell"
-        >
-          <Copy size={12} />
-        </button>
-        {canMoveUp && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveUp();
-            }}
-            className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
-            title="Move Cell Up"
-          >
-            <ArrowUp size={12} />
-          </button>
-        )}
-        {canMoveDown && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveDown();
-            }}
-            className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
-            title="Move Cell Down"
-          >
-            <ArrowDown size={12} />
-          </button>
-        )}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded hover:text-red-500"
-          title="Delete Cell"
-        >
-          <Trash2 size={12} />
-        </button>
-      </div>
+      {/* Code Editor Row (Matching Image 2: Left blue indicator, [ ]: prompt, editor, top-right buttons) */}
+      <div className="flex flex-row items-stretch relative">
+        {/* Active Blue Left Bar (Directly like Image 2) */}
+        <div
+          className={`w-1 rounded-l transition-colors flex-shrink-0 mr-1.5 ${
+            isActive ? 'bg-blue-600' : 'bg-transparent'
+          }`}
+        />
 
-      {/* Code Editor Row */}
-      <div className="flex flex-row items-stretch">
-        {/* Left In Prompt Gutter */}
-        <div className="w-16 flex-shrink-0 flex items-start justify-end pr-3 pt-2 select-none">
-          <span className="font-mono text-[11px] text-blue-700 dark:text-blue-400 font-semibold tracking-tight">
-            {isExecuting ? 'In [*]:' : cell.executionCount !== null ? `In [${cell.executionCount}]:` : 'In [ ]:'}
-          </span>
+        {/* Execution Prompt [ ]: */}
+        <div className="w-12 flex-shrink-0 flex items-start justify-end pr-2 pt-1.5 select-none font-mono text-[13px] text-blue-600 dark:text-blue-400 font-normal">
+          {isExecuting
+            ? '[*]:'
+            : cell.executionCount !== null
+            ? `[${cell.executionCount}]:`
+            : '[ ]: '}
         </div>
 
-        {/* Code Editor Box */}
+        {/* Cell Editor Wrapper with action controls at top-right */}
         <div
           onKeyDown={handleKeyDown}
-          className={`flex-1 rounded border transition-colors ${
+          className={`flex-1 relative rounded border transition-colors ${
             isActive
-              ? 'border-blue-500 ring-1 ring-blue-500/20 bg-neutral-50/60 dark:bg-neutral-900/60'
-              : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-900/40 hover:border-neutral-300 dark:hover:border-neutral-700'
+              ? 'border-blue-500 shadow-sm bg-white dark:bg-neutral-900'
+              : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-700'
           }`}
         >
-          <CodeMirror
-            value={cell.source}
-            height="auto"
-            theme={isDark ? oneDark : 'light'}
-            extensions={[python()]}
-            onChange={onChange}
-            basicSetup={{
-              lineNumbers: true,
-              highlightActiveLineGutter: true,
-              highlightSpecialChars: true,
-              history: true,
-              foldGutter: false,
-              drawSelection: true,
-              dropCursor: true,
-              allowMultipleSelections: true,
-              indentOnInput: true,
-              syntaxHighlighting: true,
-              bracketMatching: true,
-              closeBrackets: true,
-              autocompletion: true,
-              rectangularSelection: true,
-              crosshairCursor: true,
-              highlightActiveLine: false,
-              highlightSelectionMatches: true,
-              closeBracketsKeymap: true,
-              defaultKeymap: true,
-              searchKeymap: true,
-              historyKeymap: true,
-              foldKeymap: true,
-              completionKeymap: true,
-              lintKeymap: true,
-            }}
-          />
+          {/* Top-Right Cell Action Buttons (Matching Image 2: duplicate, up, down, insert, trash) */}
+          <div
+            className={`absolute right-1.5 top-1.5 z-10 flex items-center space-x-0.5 text-neutral-400 dark:text-neutral-500 ${
+              isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            } transition-opacity`}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate();
+              }}
+              className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded hover:text-neutral-700 dark:hover:text-neutral-200"
+              title="Duplicate cell"
+            >
+              <Copy size={13} />
+            </button>
+            {canMoveUp && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveUp();
+                }}
+                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded hover:text-neutral-700 dark:hover:text-neutral-200"
+                title="Move cell up"
+              >
+                <ArrowUp size={13} />
+              </button>
+            )}
+            {canMoveDown && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown();
+                }}
+                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded hover:text-neutral-700 dark:hover:text-neutral-200"
+                title="Move cell down"
+              >
+                <ArrowDown size={13} />
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onInsertBelow();
+              }}
+              className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded hover:text-neutral-700 dark:hover:text-neutral-200"
+              title="Insert cell below"
+            >
+              <Plus size={13} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded hover:text-red-500"
+              title="Delete cell"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+
+          <div className="py-0.5 pr-20 min-h-[36px]">
+            <CodeMirror
+              value={cell.source}
+              height="auto"
+              theme={isDark ? oneDark : 'light'}
+              extensions={[python()]}
+              onChange={onChange}
+              basicSetup={{
+                lineNumbers: false,
+                highlightActiveLineGutter: false,
+                highlightSpecialChars: true,
+                history: true,
+                foldGutter: false,
+                drawSelection: true,
+                dropCursor: true,
+                allowMultipleSelections: true,
+                indentOnInput: true,
+                syntaxHighlighting: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                rectangularSelection: true,
+                crosshairCursor: true,
+                highlightActiveLine: false,
+                highlightSelectionMatches: true,
+                closeBracketsKeymap: true,
+                defaultKeymap: true,
+                searchKeymap: true,
+                historyKeymap: true,
+                foldKeymap: true,
+                completionKeymap: true,
+                lintKeymap: true,
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Outputs */}
+      {/* Output Area */}
       <CellOutput outputs={cell.outputs} executionCount={cell.executionCount} />
     </div>
   );
